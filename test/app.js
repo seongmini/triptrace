@@ -130,14 +130,10 @@ async function main() {
     title.setAttribute('aria-live', 'polite');
     const date = document.createElement('small');
     date.textContent = `${index + 1}. ${photo.takenAt.slice(0, 19).replace('T', ' ')}`;
-    const detail = document.createElement('small');
-    detail.textContent = `UTC${photo.takenAt.slice(19)} · ${photo.latitude.toFixed(5)}, ${photo.longitude.toFixed(5)}`;
-    const name = document.createElement('small');
-    name.textContent = photo.name;
     const badge = document.createElement('small');
     badge.className = 'ai-label';
     badge.textContent = 'AI 설명';
-    caption.append(badge, title, date, detail, name);
+    caption.append(badge, title, date);
     button.append(img, caption);
     li.append(button);
     descriptionTasks.push(async () => {
@@ -185,9 +181,20 @@ async function main() {
     label.textContent = `${index + 1} · ${photo.takenAt.slice(5, 10)} ${photo.takenAt.slice(11, 16)}`;
     label.setAttribute('aria-label', `${index + 1}번째 사진 보기`);
     label.setAttribute('aria-pressed', 'false');
+    const preview = document.createElement('img');
+    preview.className = 'pin-preview';
+    preview.src = photo.url;
+    preview.alt = '';
+    preview.loading = 'lazy';
+    label.append(preview);
     labels.push(label);
     const overlay = new kakao.maps.CustomOverlay({ map, position: points[index], content: label, yAnchor: 1.2, zIndex: index + 1 });
     overlays.push(overlay);
+    for (const event of ['mouseenter', 'mouseleave', 'focus', 'blur']) {
+      label.addEventListener(event, () => {
+        overlay.setZIndex(label.matches(':hover, :focus-visible') ? photos.length + 2 : selectedIndex === index ? photos.length + 1 : index + 1);
+      });
+    }
     const select = () => {
       selectedIndex = index;
       map.setLevel(4);
