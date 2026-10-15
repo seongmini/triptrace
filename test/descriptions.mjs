@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 
-export function createDescriber({ key, model = 'gemini-2.5-flash-lite', cacheDirectory, request = fetch, wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
+export function createDescriber({ key, model = 'gemini-3.1-flash-lite', cacheDirectory, request = fetch, wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
   const cache = new Map();
   return async function describe(image) {
     if (image.length > 14 * 1024 * 1024) throw new Error('설명 생성은 14MB 이하 JPG 사진을 지원합니다.');

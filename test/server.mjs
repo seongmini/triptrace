@@ -16,7 +16,7 @@ try {
 }
 
 let routeCache;
-const describe = createDescriber({ key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite', cacheDirectory: path.join(root, '.cache', 'photo-titles') });
+const describe = createDescriber({ key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite', cacheDirectory: path.join(root, '.cache', 'photo-titles') });
 export const server = createServer(async (request, response) => {
   const send = (status, type, body) => {
     response.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
