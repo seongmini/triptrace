@@ -3,8 +3,8 @@ const errorBox = document.querySelector('#error');
 const fit = document.querySelector('#fit');
 const timeline = document.querySelector('#timeline');
 
-async function json(url) {
-  const response = await fetch(url);
+async function json(url, options) {
+  const response = await fetch(url, options);
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || '데이터를 불러오지 못했습니다.');
   return data;
@@ -37,6 +37,7 @@ async function main() {
       document.querySelector('#skipped').append(li);
     }
   }
+  const descriptionTasks = [];
   const buttons = photos.map((photo, index) => {
     const li = document.createElement('li');
     const button = document.createElement('button');
@@ -50,17 +51,46 @@ async function main() {
     const caption = document.createElement('span');
     caption.className = 'caption';
     const title = document.createElement('strong');
-    title.textContent = `${index + 1}. ${photo.takenAt.slice(0, 19).replace('T', ' ')}`;
+    title.className = 'photo-title';
+    title.textContent = '사진 설명을 준비하고 있어요…';
+    title.setAttribute('aria-live', 'polite');
+    const date = document.createElement('small');
+    date.textContent = `${index + 1}. ${photo.takenAt.slice(0, 19).replace('T', ' ')}`;
     const detail = document.createElement('small');
     detail.textContent = `UTC${photo.takenAt.slice(19)} · ${photo.latitude.toFixed(5)}, ${photo.longitude.toFixed(5)}`;
     const name = document.createElement('small');
     name.textContent = photo.name;
-    caption.append(title, detail, name);
+    const badge = document.createElement('small');
+    badge.className = 'ai-label';
+    badge.textContent = 'AI 설명';
+    caption.append(badge, title, date, detail, name);
     button.append(img, caption);
     li.append(button);
+    descriptionTasks.push(async () => {
+      title.textContent = '사진을 살펴보고 있어요…';
+      title.setAttribute('aria-busy', 'true');
+      try {
+        const result = await json(`/api/description?name=${encodeURIComponent(photo.name)}`, { method: 'POST' });
+        title.textContent = result.description;
+        img.alt = result.description;
+      } catch (error) {
+        title.textContent = '여행의 한 장면';
+        badge.textContent = 'AI 설명을 불러오지 못했어요';
+        const message = document.createElement('small');
+        message.className = 'description-error';
+        message.textContent = error.message;
+        caption.append(message);
+      } finally {
+        title.removeAttribute('aria-busy');
+      }
+    });
     timeline.append(li);
     return button;
   });
+  // Run separately from map loading so either feature can fail independently.
+  void (async () => {
+    for (const task of descriptionTasks) await task();
+  })();
   if (!photos.length) {
     status.textContent += ' · 촬영 시간·시간대·GPS가 있는 JPG 사진을 photo_sumin에 넣어주세요.';
     return;
@@ -72,7 +102,6 @@ async function main() {
   const bounds = new kakao.maps.LatLngBounds();
   points.forEach(point => bounds.extend(point));
   const fitBounds = () => points.length === 1 ? map.setCenter(points[0]) : map.setBounds(bounds, 70, 70, 70, 70);
-  new kakao.maps.Polyline({ map, path: points, strokeWeight: 4, strokeColor: '#16705a', strokeOpacity: 0.8, strokeStyle: 'solid' });
   const overlays = [];
   photos.forEach((photo, index) => {
     const label = document.createElement('button');
@@ -95,6 +124,23 @@ async function main() {
   fit.onclick = fitBounds;
   fitBounds();
   window.addEventListener('resize', () => { map.relayout(); fitBounds(); });
+  if (photos.length > 1) {
+    status.textContent += ' · 도로 경로를 찾고 있습니다…';
+    try {
+      const route = await json('/api/route');
+      for (const path of route.paths) {
+        const coordinates = path.map(p => new kakao.maps.LatLng(p.latitude, p.longitude));
+        coordinates.forEach(p => bounds.extend(p));
+        new kakao.maps.Polyline({ map, path: coordinates, strokeWeight: 4, strokeColor: '#16705a', strokeOpacity: 0.8, strokeStyle: 'solid' });
+      }
+      status.textContent = status.textContent.replace('도로 경로를 찾고 있습니다…', route.paths.length ? `자동차 추천 경로 ${(route.distance / 1000).toFixed(1)}km · 약 ${Math.ceil(route.duration / 60)}분` : '동일한 촬영 위치입니다.');
+      fitBounds();
+    } catch (error) {
+      status.textContent = status.textContent.replace('도로 경로를 찾고 있습니다…', '도로 경로를 표시하지 못했습니다.');
+      errorBox.hidden = false;
+      errorBox.textContent = error.message;
+    }
+  }
 }
 
 main().catch(error => {
