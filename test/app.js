@@ -119,13 +119,11 @@ async function main() {
       reloadTrips();
     };
   }
-  document.querySelector('#trip-mode-hint').textContent = settings.mode === 'time'
+  const modeHint = document.querySelector('#trip-mode-hint');
+  modeHint.hidden = settings.mode !== 'time';
+  modeHint.textContent = settings.mode === 'time'
     ? '촬영 시간 간격이 24시간을 넘는 연결을 끊어 여정을 나눕니다.'
-    : '촬영 위치 사이 직선거리가 50km를 넘는 연결을 끊어 여정을 나눕니다. 같은 지역의 재방문은 하나로 묶일 수 있습니다.';
-  document.querySelector('#reset-trips').onclick = () => {
-    settings.overrides = {};
-    reloadTrips();
-  };
+    : '';
   const segmentation = segmentTrips(allPhotos, settings);
   const tripSelect = document.querySelector('#trip-select');
   const sortSelect = document.querySelector('#trip-sort');
@@ -156,20 +154,6 @@ async function main() {
   };
   tripSelect.disabled = !segmentation.trips.length;
   tripSelect.onchange = () => reloadTrips(Number(tripSelect.value));
-  document.querySelector('#trip-summary').textContent = `${allPhotos.length}장의 사진을 ${segmentation.trips.length}개 여행으로 분리했습니다. 설정과 수동 경계는 이 브라우저에 저장됩니다.`;
-  for (const boundary of segmentation.boundaries) {
-    const row = document.createElement('label');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = boundary.split;
-    checkbox.onchange = () => {
-      settings.overrides[boundary.key] = checkbox.checked;
-      reloadTrips();
-    };
-    const before = allPhotos[boundary.index - 1], after = allPhotos[boundary.index];
-    row.append(checkbox, document.createTextNode(`${boundary.index} → ${boundary.index + 1} 사이 나누기 · ${before.takenAt.slice(0, 16).replace('T', ' ')} → ${after.takenAt.slice(0, 16).replace('T', ' ')} (${boundary.automatic ? '자동 분리' : '자동 연결'})`));
-    document.querySelector('#trip-boundaries').append(row);
-  }
   const selectedTrip = segmentation.trips[tripIndex] ?? { start: 0, end: 0 };
   const photos = allPhotos.slice(selectedTrip.start, selectedTrip.end);
   const routeRange = new URLSearchParams({ source, start: selectedTrip.start, end: selectedTrip.end });
