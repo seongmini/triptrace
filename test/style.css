@@ -10,3 +10,7 @@ body.viewer-open{overflow:hidden}#photo-viewer{width:min(1200px,96vw);max-width:
 
 .trip-modes{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.trip-modes button[aria-pressed=true]{background:#16705a;border-color:#16705a;color:white;font-weight:700}
 
+/* Keep the preview outside the pin layout so the map anchor never moves. */
+.pin{position:relative}
+.pin-preview{display:none;position:absolute;left:-2px;bottom:calc(100% + 2px);width:calc(100% + 4px);height:auto;border:2px solid #16705a;border-radius:8px 8px 0 0;box-shadow:0 -2px 6px #0002;background:#fff;pointer-events:none}
+.pin:hover .pin-preview,.pin:focus-visible .pin-preview{display:block}
