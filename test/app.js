@@ -2,6 +2,10 @@ const status = document.querySelector('#status');
 const errorBox = document.querySelector('#error');
 const fit = document.querySelector('#fit');
 const timeline = document.querySelector('#timeline');
+const source = new URLSearchParams(location.search).get('source') ?? 'sumin';
+const sourceSelect = document.querySelector('#source');
+sourceSelect.value = source;
+sourceSelect.onchange = () => { location.search = new URLSearchParams({ source: sourceSelect.value }); };
 
 async function json(url, options) {
   const response = await fetch(url, options);
@@ -26,7 +30,7 @@ function loadMap(key) {
 }
 
 async function main() {
-  const { photos, skipped } = await json('/api/photos');
+  const { photos, skipped } = await json(`/api/photos?source=${encodeURIComponent(source)}`);
   status.textContent = `전체 ${photos.length + skipped.length}장 · 경로 표시 ${photos.length}장 · 제외 ${skipped.length}장`;
   if (skipped.length) {
     document.querySelector('#excluded').hidden = false;
@@ -70,7 +74,7 @@ async function main() {
       title.textContent = '사진을 살펴보고 있어요…';
       title.setAttribute('aria-busy', 'true');
       try {
-        const result = await json(`/api/description?name=${encodeURIComponent(photo.name)}`, { method: 'POST' });
+        const result = await json(`/api/description?source=${encodeURIComponent(source)}&name=${encodeURIComponent(photo.name)}`, { method: 'POST' });
         title.textContent = result.description;
         img.alt = result.description;
       } catch (error) {
@@ -92,7 +96,7 @@ async function main() {
     for (const task of descriptionTasks) await task();
   })();
   if (!photos.length) {
-    status.textContent += ' · 촬영 시간·시간대·GPS가 있는 JPG 사진을 photo_sumin에 넣어주세요.';
+    status.textContent += ' · 촬영 시간·시간대·GPS가 있는 JPG 사진을 선택한 폴더에 넣어주세요.';
     return;
   }
   const { key } = await json('/api/config');
@@ -127,7 +131,7 @@ async function main() {
   if (photos.length > 1) {
     status.textContent += ' · 도로 경로를 찾고 있습니다…';
     try {
-      const route = await json('/api/route');
+      const route = await json(`/api/route?source=${encodeURIComponent(source)}`);
       for (const path of route.paths) {
         const coordinates = path.map(p => new kakao.maps.LatLng(p.latitude, p.longitude));
         coordinates.forEach(p => bounds.extend(p));

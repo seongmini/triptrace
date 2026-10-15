@@ -12,7 +12,7 @@ test('서버 재생성 후에도 저장된 제목을 키와 API 요청 없이 �
     let calls = 0;
     const request = async url => {
       calls++;
-      assert.match(url, /gemini-3\.1-flash-lite/);
+      assert.match(url, /gemini-2\.5-flash-lite/);
       return { ok: true, json: async () => ({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: '푸른 바다' }] } }] }) };
     };
     const first = createDescriber({ key: 'secret', cacheDirectory, request });
