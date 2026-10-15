@@ -30,5 +30,17 @@ test('선택한 폴더의 사진만 제공하고 잘못된 폴더 접근을 차�
     assert.equal(response.status, 400);
   }
   assert.equal((await request('/.env')).status, 404);
+  assert.equal((await request('/trips.mjs')).status, 200);
+  for (const source of ['sumin', 'seongmin']) {
+    const response = await request(`/api/photos?source=${source}`);
+    if (response.status !== 200) continue;
+    const count = JSON.parse(response.body).photos.length;
+    for (const range of ['start=-1', 'start=0.5', `end=${count + 1}`, 'start=2&end=1']) {
+      assert.equal((await request(`/api/route?source=${source}&${range}`)).status, 400);
+    }
+    const single = await request(`/api/route?source=${source}&start=0&end=${Math.min(1, count)}`);
+    assert.equal(single.status, 200);
+    assert.deepEqual(JSON.parse(single.body).paths, []);
+  }
   assert.equal((await request('/photos/%2e%2e%2f.env?source=seongmin')).status, 404);
 });

@@ -1,3 +1,4 @@
+import { segmentTrips, sortTrips } from './trips.mjs';
 const status = document.querySelector('#status');
 const errorBox = document.querySelector('#error');
 const fit = document.querySelector('#fit');
@@ -99,7 +100,81 @@ function loadMap(key) {
 }
 
 async function main() {
-  const { photos, skipped } = await json(`/api/photos?source=${encodeURIComponent(source)}`);
+  const { photos: allPhotos, skipped } = await json(`/api/photos?source=${encodeURIComponent(source)}`);
+  const storageKey = `triptrace:trips:v2:${source}`;
+  let settings = { mode: 'time', overrides: {} };
+  try {
+    const stored = JSON.parse(localStorage.getItem(storageKey));
+    if (stored && ['time', 'distance'].includes(stored.mode)) settings = { mode: stored.mode, overrides: stored.overrides && typeof stored.overrides === 'object' ? stored.overrides : {} };
+  } catch { /* Browser storage may be unavailable. */ }
+  const reloadTrips = (trip = 0) => {
+    try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch { errorBox.hidden = false; errorBox.textContent = '여행 설정을 저장할 수 없습니다. 브라우저 저장소를 허용해주세요.'; return; }
+    location.search = new URLSearchParams({ source, trip });
+  };
+  for (const [id, mode] of [['split-time', 'time'], ['split-distance', 'distance']]) {
+    const button = document.getElementById(id);
+    button.setAttribute('aria-pressed', String(settings.mode === mode));
+    button.onclick = () => {
+      if (settings.mode === mode) return;
+      settings = { mode, overrides: {} };
+      reloadTrips();
+    };
+  }
+  document.querySelector('#trip-mode-hint').textContent = settings.mode === 'time'
+    ? '촬영 시간 간격이 24시간을 넘는 연결을 끊어 여정을 나눕니다.'
+    : '촬영 위치 사이 직선거리가 50km를 넘는 연결을 끊어 여정을 나눕니다. 같은 지역의 재방문은 하나로 묶일 수 있습니다.';
+  document.querySelector('#reset-trips').onclick = () => {
+    settings.overrides = {};
+    reloadTrips();
+  };
+  const segmentation = segmentTrips(allPhotos, settings);
+  const tripSelect = document.querySelector('#trip-select');
+  const sortSelect = document.querySelector('#trip-sort');
+  const sortKey = `triptrace:sort:${source}`;
+  try {
+    const saved = localStorage.getItem(sortKey);
+    if (['recent', 'photos', 'distance'].includes(saved)) sortSelect.value = saved;
+  } catch { /* Default to recent when storage is unavailable. */ }
+  let sorted = sortTrips(allPhotos, segmentation.trips, sortSelect.value);
+  const tripParam = new URLSearchParams(location.search).get('trip');
+  const requestedTrip = tripParam === null ? NaN : Number(tripParam);
+  const tripIndex = Number.isInteger(requestedTrip) && requestedTrip >= 0 && requestedTrip < segmentation.trips.length ? requestedTrip : (sorted[0]?.index ?? 0);
+  const renderTripOptions = () => {
+    sorted = sortTrips(allPhotos, segmentation.trips, sortSelect.value);
+    tripSelect.replaceChildren();
+    for (const trip of sorted) {
+      const option = document.createElement('option');
+      option.value = trip.index;
+      option.textContent = `여행 ${trip.index + 1} · ${allPhotos[trip.start].takenAt.slice(0, 10)} ~ ${allPhotos[trip.end - 1].takenAt.slice(0, 10)} · ${trip.count}장 · 추정 ${trip.estimatedKm.toFixed(1)}km`;
+      tripSelect.append(option);
+    }
+    tripSelect.value = tripIndex;
+  };
+  renderTripOptions();
+  sortSelect.onchange = () => {
+    try { localStorage.setItem(sortKey, sortSelect.value); } catch { /* Sorting still works without persistence. */ }
+    renderTripOptions();
+  };
+  tripSelect.disabled = !segmentation.trips.length;
+  tripSelect.onchange = () => reloadTrips(Number(tripSelect.value));
+  document.querySelector('#trip-summary').textContent = `${allPhotos.length}장의 사진을 ${segmentation.trips.length}개 여행으로 분리했습니다. 설정과 수동 경계는 이 브라우저에 저장됩니다.`;
+  for (const boundary of segmentation.boundaries) {
+    const row = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = boundary.split;
+    checkbox.onchange = () => {
+      settings.overrides[boundary.key] = checkbox.checked;
+      reloadTrips();
+    };
+    const before = allPhotos[boundary.index - 1], after = allPhotos[boundary.index];
+    row.append(checkbox, document.createTextNode(`${boundary.index} → ${boundary.index + 1} 사이 나누기 · ${before.takenAt.slice(0, 16).replace('T', ' ')} → ${after.takenAt.slice(0, 16).replace('T', ' ')} (${boundary.automatic ? '자동 분리' : '자동 연결'})`));
+    document.querySelector('#trip-boundaries').append(row);
+  }
+  const selectedTrip = segmentation.trips[tripIndex] ?? { start: 0, end: 0 };
+  const photos = allPhotos.slice(selectedTrip.start, selectedTrip.end);
+  const routeRange = new URLSearchParams({ source, start: selectedTrip.start, end: selectedTrip.end });
+  document.querySelector('#timeline-title').textContent = `${sourceLabel} · 여행 ${tripIndex + 1} 촬영 타임라인`;
   status.textContent = `전체 ${photos.length + skipped.length}장 · 경로 표시 ${photos.length}장 · 제외 ${skipped.length}장`;
   if (skipped.length) {
     document.querySelector('#excluded').hidden = false;
@@ -218,7 +293,7 @@ async function main() {
   if (photos.length > 1) {
     status.textContent += ' · 도로 경로를 찾고 있습니다…';
     try {
-      const route = await json(`/api/route?source=${encodeURIComponent(source)}`);
+      const route = await json(`/api/route?${routeRange}`);
       for (const path of route.paths) {
         const coordinates = path.map(p => new kakao.maps.LatLng(p.latitude, p.longitude));
         coordinates.forEach(p => bounds.extend(p));

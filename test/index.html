@@ -5,12 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TripTrace · 사진으로 보는 여행</title>
   <link rel="stylesheet" href="/style.css">
-  <script src="/app.js" defer></script>
+  <script src="/app.js" type="module"></script>
 </head>
 <body>
   <header><p class="eyebrow">TRIPTRACE / LOCAL TEST</p><h1>사진을 따라, 여행의 기록</h1><p>촬영 지점을 시간순으로 지나는 자동차 추천 경로입니다. 실제 여행 당시의 이동 경로와는 다를 수 있습니다.</p></header>
   <label for="source">사진 선택</label>
   <select id="source"><option value="sumin">아이폰 · photo_sumin</option><option value="seongmin">갤럭시 · photo_seongmin</option></select>
+  <section class="trip-settings" aria-label="여행 나누기">
+    <h2>여행 나누기</h2>
+    <p class="hint" id="trip-mode-hint"></p>
+    <div class="trip-modes" role="group" aria-label="여정 분리 방식">
+      <button id="split-time" aria-pressed="false">시간 기준으로 여정 나누기</button>
+      <button id="split-distance" aria-pressed="false">거리 기준으로 여정 나누기</button>
+    </div>
+    <button id="reset-trips">수동 경계 초기화</button>
+    <p id="trip-summary" role="status"></p>
+    <label>여행 정렬 <select id="trip-sort"><option value="recent">최근 여행순</option><option value="photos">사진 많은 순</option><option value="distance">추정 이동 거리순</option></select></label>
+    <p class="hint">추정 이동 거리는 촬영 순서대로 사진 위치 사이 직선거리를 합산한 값입니다.</p>
+    <label>표시할 여행 <select id="trip-select"></select></label>
+    <details><summary>사진 사이 경계 직접 수정</summary><div id="trip-boundaries"></div></details>
+  </section>
   <p id="status" role="status">사진 메타데이터를 읽고 있습니다…</p>
   <p id="error" role="alert" hidden></p>
   <p id="map-title" role="status">여행 지도</p>

@@ -41,7 +41,11 @@ export const server = createServer(async (request, response) => {
     }
     if (request.method !== 'GET') return send(405, 'text/plain; charset=utf-8', 'GET only');
     if (pathname === '/api/route') {
-      const { photos } = await readPhotos(photoDirectory);
+      const data = await readPhotos(photoDirectory);
+      const start = Number(url.searchParams.get('start') ?? 0);
+      const end = Number(url.searchParams.get('end') ?? data.photos.length);
+      if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end < start || end > data.photos.length) return send(400, 'application/json', JSON.stringify({ error: '올바른 여행 범위를 선택해주세요.' }));
+      const photos = data.photos.slice(start, end);
       const signature = JSON.stringify(photos.map(p => [p.latitude, p.longitude]));
       if (!routeCache || routeCache.signature !== signature || Date.now() - routeCache.created > 300000) {
         const pending = roadRoute(photos, process.env.KAKAO_REST_API_KEY);
@@ -65,6 +69,7 @@ export const server = createServer(async (request, response) => {
       return send(200, 'application/json', JSON.stringify({ key }));
     }
     const assets = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/style.css': ['style.css', 'text/css; charset=utf-8'] };
+    assets['/trips.mjs'] = ['trips.mjs', 'text/javascript; charset=utf-8'];
     if (Object.hasOwn(assets, pathname)) {
       const [file, type] = assets[pathname];
       return send(200, type, await readFile(path.join(directory, file)));
