@@ -15,7 +15,6 @@ sourceSelect.onchange = () => {
   location.search = new URLSearchParams({ source: sourceSelect.value });
 };
 const sourceLabel = sourceSelect.selectedOptions[0].textContent.split(' · ')[0];
-document.querySelector('#timeline-title').textContent = `${sourceLabel} 촬영 타임라인`;
 document.querySelector('#map-title').textContent = `${sourceLabel} 여행 지도`;
 
 const viewer = document.querySelector('#photo-viewer');
@@ -174,7 +173,7 @@ async function main() {
   const selectedTrip = segmentation.trips[tripIndex] ?? { start: 0, end: 0 };
   const photos = allPhotos.slice(selectedTrip.start, selectedTrip.end);
   const routeRange = new URLSearchParams({ source, start: selectedTrip.start, end: selectedTrip.end });
-  document.querySelector('#timeline-title').textContent = `${sourceLabel} · 여행 ${tripIndex + 1} 촬영 타임라인`;
+  document.querySelector('#timeline-title').textContent = `여행 ${tripIndex + 1} 촬영 타임라인`;
   status.textContent = `전체 ${photos.length + skipped.length}장 · 경로 표시 ${photos.length}장 · 제외 ${skipped.length}장`;
   if (skipped.length) {
     document.querySelector('#excluded').hidden = false;
@@ -188,17 +187,21 @@ async function main() {
   const descriptionTasks = [];
   const buttons = photos.map((photo, index) => {
     const li = document.createElement('li');
-    const button = document.createElement('button');
-    button.className = 'photo';
-    button.onclick = () => openPhoto(photo, img.alt);
-    button.setAttribute('aria-haspopup', 'dialog');
-    button.setAttribute('aria-pressed', 'false');
+    const card = document.createElement('div');
+    card.className = 'photo';
+    const imageButton = document.createElement('button');
+    imageButton.className = 'photo-image';
+    imageButton.onclick = () => openPhoto(photo, img.alt);
+    imageButton.setAttribute('aria-haspopup', 'dialog');
+    imageButton.setAttribute('aria-label', `${index + 1}번째 사진 크게 보기`);
     const img = document.createElement('img');
     img.src = photo.url;
     img.alt = `${index + 1}번째 촬영 사진`;
     img.loading = 'lazy';
-    const caption = document.createElement('span');
+    const caption = document.createElement('button');
     caption.className = 'caption';
+    caption.setAttribute('aria-pressed', 'false');
+    caption.disabled = true;
     const title = document.createElement('strong');
     title.className = 'photo-title';
     title.textContent = '사진 설명을 준비하고 있어요…';
@@ -209,8 +212,9 @@ async function main() {
     badge.className = 'ai-label';
     badge.textContent = 'AI 설명';
     caption.append(badge, title, date);
-    button.append(img, caption);
-    li.append(button);
+    imageButton.append(img);
+    card.append(imageButton, caption);
+    li.append(card);
     descriptionTasks.push(async () => {
       title.textContent = '사진을 살펴보고 있어요…';
       title.setAttribute('aria-busy', 'true');
@@ -230,7 +234,7 @@ async function main() {
       }
     });
     timeline.append(li);
-    return button;
+    return caption;
   });
   // Run separately from map loading so either feature can fail independently.
   void (async () => {
@@ -278,13 +282,15 @@ async function main() {
       labels.forEach((item, i) => item.setAttribute('aria-pressed', String(i === index)));
       overlays.forEach((item, i) => item.setZIndex(i === index ? photos.length + 1 : i + 1));
       document.querySelector('#map-title').textContent = `${sourceLabel} · ${index + 1}번째 사진 · ${photo.takenAt.slice(0, 19).replace('T', ' ')}`;
-      buttons[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      buttons[index].closest('.photo').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     };
     label.onclick = select;
     buttons[index].disabled = false;
-    buttons[index].onclick = () => {
+    buttons[index].onclick = select;
+    const imageButton = buttons[index].previousElementSibling;
+    imageButton.onclick = () => {
       select();
-      openPhoto(photo, buttons[index].querySelector('img').alt);
+      openPhoto(photo, imageButton.querySelector('img').alt);
     };
   });
   fit.disabled = false;
