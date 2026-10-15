@@ -13,10 +13,25 @@
   <select id="source"><option value="sumin">아이폰 · photo_sumin</option><option value="seongmin">갤럭시 · photo_seongmin</option></select>
   <p id="status" role="status">사진 메타데이터를 읽고 있습니다…</p>
   <p id="error" role="alert" hidden></p>
+  <p id="map-title" role="status">여행 지도</p>
   <main>
     <section class="map-panel" aria-label="여행 지도"><div id="map"></div><button id="fit" disabled>전체 경로 보기</button></section>
-    <aside><h2>촬영 타임라인</h2><p class="hint">사진을 누르면 지도에서 위치를 확인할 수 있습니다. 사진은 Gemini로 전송되어 AI 설명이 순서대로 표시됩니다.</p><ol id="timeline"></ol></aside>
+    <aside><h2 id="timeline-title">촬영 타임라인</h2><p class="hint">선택한 폴더의 사진을 촬영 순서로 보여줍니다. 사진이나 지도 마커를 누르면 해당 위치와 타임라인이 함께 선택됩니다. 사진은 Gemini로 전송되어 AI 설명이 순서대로 표시됩니다.</p><ol id="timeline"></ol></aside>
   </main>
   <details id="excluded" hidden><summary id="excluded-title"></summary><ul id="skipped"></ul></details>
+  <dialog id="photo-viewer" aria-labelledby="viewer-title">
+    <div class="viewer-toolbar">
+      <h2 id="viewer-title">사진 크게 보기</h2>
+      <div class="viewer-controls">
+        <button id="zoom-out" aria-label="사진 축소">−</button>
+        <output id="zoom-level" aria-live="polite">100%</output>
+        <button id="zoom-in" aria-label="사진 확대">+</button>
+        <button id="zoom-reset">화면에 맞추기</button>
+        <button id="viewer-close" autofocus aria-label="사진 보기 닫기">닫기 ×</button>
+      </div>
+    </div>
+    <div id="viewer-stage"><img id="viewer-image" alt="" draggable="false"></div>
+    <p class="viewer-hint">휠 또는 + / − 키로 확대·축소 · 드래그로 이동 · Esc로 닫기</p>
+  </dialog>
 </body>
 </html>
