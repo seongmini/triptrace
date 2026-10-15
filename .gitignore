@@ -1,4 +1,12 @@
 /photo_sumin/
+/photo_seongmin/
 .env
+.env.*
+!.env.example
 node_modules/
 /.cache/
+
+# Local logs and OS files
+*.log
+.DS_Store
+Thumbs.db

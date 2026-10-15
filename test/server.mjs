@@ -8,7 +8,6 @@ import { createDescriber } from './descriptions.mjs';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const root = path.dirname(directory);
-const photoDirectory = path.join(root, 'photo_sumin');
 try {
   process.loadEnvFile(path.join(root, '.env'));
 } catch (error) {
@@ -23,7 +22,11 @@ export const server = createServer(async (request, response) => {
     response.end(body);
   };
   try {
-    const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+    const url = new URL(request.url, 'http://localhost');
+    const pathname = decodeURIComponent(url.pathname);
+    const source = url.searchParams.get('source') ?? 'sumin';
+    if (!['sumin', 'seongmin'].includes(source)) return send(400, 'application/json', JSON.stringify({ error: '올바른 사진 폴더를 선택해주세요.' }));
+    const photoDirectory = path.join(root, `photo_${source}`);
     if (pathname === '/api/description' && request.method === 'POST') {
       if (request.headers.origin && request.headers.origin !== `http://${request.headers.host}`) return send(403, 'application/json', JSON.stringify({ error: '허용되지 않은 요청입니다.' }));
       const name = new URL(request.url, 'http://localhost').searchParams.get('name');
@@ -53,6 +56,7 @@ export const server = createServer(async (request, response) => {
     }
     if (pathname === '/api/photos') {
       const data = await readPhotos(photoDirectory);
+      for (const photo of data.photos) photo.url += `?source=${source}`;
       return send(200, 'application/json', JSON.stringify(data));
     }
     if (pathname === '/api/config') {
@@ -75,7 +79,7 @@ export const server = createServer(async (request, response) => {
     send(404, 'text/plain', 'Not found');
   } catch (error) {
     const status = error.code === 'ENOENT' ? 404 : 500;
-    send(status, 'application/json', JSON.stringify({ error: '파일을 읽지 못했습니다. photo_sumin 폴더와 파일을 확인해주세요.' }));
+    send(status, 'application/json', JSON.stringify({ error: '파일을 읽지 못했습니다. 선택한 사진 폴더와 파일을 확인해주세요.' }));
   }
 });
 
